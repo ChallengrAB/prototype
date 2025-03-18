@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Challengr</title>
+  <!-- Add Vue.js CDN-->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.2.40/dist/vue.global.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="app-container">
+      <div class="header">
+        <div class="logo">Challengr</div>
+        <button class="button button-accent" @click="showCreateChallenge = true">+ New Challenge</button>
+      </div>
+      
+      <div class="content">
+        <div class="level-indicator">
+          <span>Level 8</span>
+          <div class="level-bar">
+            <div class="level-progress"></div>
+          </div>
+          <span>Level 9</span>
+        </div>
+        
+        <div class="tab-container">
+          <div 
+            class="tab" 
+            :class="{ active: activeTab === 'feed' }" 
+            @click="activeTab = 'feed'"
+          >Feed</div>
+          <div 
+            class="tab" 
+            :class="{ active: activeTab === 'my' }" 
+            @click="activeTab = 'my'"
+          >My Challenges</div>
+        </div>
+        
+        <div v-if="activeTab === 'feed'">
+          <div v-for="(challenge, index) in challenges" :key="index" class="challenge-card">
+            <div class="challenge-header">
+              <div class="avatar">{{ challenge.user.charAt(0) }}</div>
+              <div>
+                <div class="username">{{ challenge.user }}</div>
+                <div class="timestamp">{{ challenge.timestamp }}</div>
+              </div>
+            </div>
+            <div class="challenge-content">
+              <div class="challenge-title">{{ challenge.title }}</div>
+              <div class="challenge-description">{{ challenge.description }}</div>
+              <div v-if="challenge.challengedUser" class="challenge-challenged-user">
+                <span class="challenge-user-label">👉 Challenging: </span>
+                <span class="challenge-user-name">{{ challenge.challengedUser }}</span>
+              </div>
+              <div v-else class="challenge-challenged-user">
+                <span class="challenge-user-label">👥 Open Challenge</span>
+              </div>
+              <div class="challenge-tags">
+                <span v-for="tag in challenge.tags" class="challenge-tag">{{ tag }}</span>
+              </div>
+              <div class="challenge-reward">Reward: {{ challenge.reward }}</div>
+            </div>
+            <div class="challenge-footer">
+              <div class="challenge-action">
+                <span>❤️</span> {{ challenge.likes }}
+              </div>
+              <div class="challenge-action" @click="shareChallenge(challenge)">
+                <span>🔗</span> Share
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="activeTab === 'my'">
+          <div v-for="(challenge, index) in myChallenges" :key="index" class="challenge-card">
+            <div class="challenge-header">
+              <div class="avatar">{{ challenge.user.charAt(0) }}</div>
+              <div>
+                <div class="username">{{ challenge.user }}</div>
+                <div class="timestamp">{{ challenge.timestamp }}</div>
+              </div>
+              <div class="badge" v-if="challenge.status === 'pending'">Pending verification</div>
+              <div class="badge" v-if="challenge.status === 'complete'">Completed</div>
+            </div>
+            <div class="challenge-content">
+              <div class="challenge-title">{{ challenge.title }}</div>
+              <div class="challenge-description">{{ challenge.description }}</div>
+              <div class="challenge-tags">
+                <span v-for="tag in challenge.tags" class="challenge-tag">{{ tag }}</span>
+              </div>
+              <div class="challenge-reward">Reward: {{ challenge.reward }}</div>
+            </div>
+            <div class="challenge-footer">
+              <div class="challenge-action" v-if="challenge.status === 'active'" @click="submitProof(challenge)">
+                <span>📸</span> Submit proof
+              </div>
+              <div class="challenge-action" v-if="challenge.status === 'complete'">
+                <span>🏆</span> Claim reward
+              </div>
+              <div class="challenge-action">
+                <span>❤️</span> {{ challenge.likes }}
+              </div>
+              <div class="challenge-action">
+                <span>🔗</span> Share
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="nav-bar">
+        <div class="nav-item" @click="activeTab = 'feed'">
+          <div class="nav-icon">🏠</div>
+          <div>Home</div>
+        </div>
+        <div class="nav-item" @click="activeTab = 'search'">
+          <div class="nav-icon">🔍</div>
+          <div>Search</div>
+        </div>
+        <div class="nav-item" @click="showCreateChallenge = true">
+          <div class="nav-icon">➕</div>
+          <div>Create</div>
+        </div>
+        <div class="nav-item" @click="activeTab = 'notifications'">
+          <div class="nav-icon">🔔</div>
+          <div>Alerts</div>
+        </div>
+        <div class="nav-item" @click="activeTab = 'my'">
+          <div class="nav-icon">👤</div>
+          <div>Profile</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Create Challenge Modal -->
+    <div class="modal-bg" v-if="showCreateChallenge">
+      <div class="modal">
+        <div class="modal-title">Create New Challenge</div>
+        <div class="form-group">
+          <label class="form-label">Challenge Title</label>
+          <input type="text" class="form-input" v-model="newChallenge.title" placeholder="E.g., Run 5km in under 30 minutes">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" rows="3" v-model="newChallenge.description" placeholder="Describe the challenge and how to complete it"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Challenge Type</label>
+          <select class="form-select" v-model="newChallenge.type">
+            <option value="fitness">Fitness</option>
+            <option value="learning">Learning</option>
+            <option value="creativity">Creativity</option>
+            <option value="social">Social</option>
+            <option value="personal">Personal Growth</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Challenge User</label>
+          <select class="form-select" v-model="newChallenge.challengedUser">
+            <option value="">Open Challenge (Anyone can accept)</option>
+            <option value="JohnFitness">JohnFitness</option>
+            <option value="AlexRunner">AlexRunner</option>
+            <option value="MikeCode">MikeCode</option>
+            <option value="EmmaYoga">EmmaYoga</option>
+            <option value="SamReader">SamReader</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="checkbox-container">
+            <input type="checkbox" id="noPayment" v-model="newChallenge.noPayment" @change="togglePayment">
+            <label for="noPayment">No monetary stake (just for fun!)</label>
+          </div>
+        </div>
+        <div v-if="!newChallenge.noPayment">
+          <div class="form-group">
+            <label class="form-label">Reward Type</label>
+            <div class="payment-type-selector">
+              <div 
+                class="payment-type-option" 
+                :class="{ active: newChallenge.rewardType === 'fiat' }"
+                @click="newChallenge.rewardType = 'fiat'"
+              >
+                <span class="payment-icon">💰</span>
+                <span>SEK</span>
+              </div>
+              <div 
+                class="payment-type-option" 
+                :class="{ active: newChallenge.rewardType === 'crypto' }"
+                @click="newChallenge.rewardType = 'crypto'"
+              >
+                <span class="payment-icon">₿</span>
+                <span>Crypto</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              Reward Amount: {{ newChallenge.rewardType === 'fiat' ? newChallenge.rewardAmount + ' kr' : newChallenge.rewardAmount + ' ETH' }}
+            </label>
+            <input 
+              type="range" 
+              class="form-slider" 
+              v-model.number="newChallenge.rewardAmount" 
+              :min="newChallenge.rewardType === 'fiat' ? 10 : 0.001" 
+              :max="newChallenge.rewardType === 'fiat' ? 1000 : 0.1" 
+              :step="newChallenge.rewardType === 'fiat' ? 10 : 0.001"
+            >
+            <div class="slider-labels">
+              <span>{{ newChallenge.rewardType === 'fiat' ? '10 kr' : '0.001 ETH' }}</span>
+              <span>{{ newChallenge.rewardType === 'fiat' ? '1000 kr' : '0.1 ETH' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (Select up to 3)</label>
+          <div class="tag-selector">
+            <div 
+              v-for="tag in availableTags" 
+              class="tag-option"
+              :class="{ active: newChallenge.selectedTags.includes(tag) }"
+              @click="toggleTag(tag)"
+            >
+              {{ tag }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Difficulty Level</label>
+          <div class="difficulty-selector">
+            <div 
+              class="difficulty-option" 
+              :class="{ active: newChallenge.difficulty === 'easy' }"
+              @click="newChallenge.difficulty = 'easy'"
+            >
+              Easy 😊
+            </div>
+            <div 
+              class="difficulty-option" 
+              :class="{ active: newChallenge.difficulty === 'medium' }"
+              @click="newChallenge.difficulty = 'medium'"
+            >
+              Medium 😐
+            </div>
+            <div 
+              class="difficulty-option" 
+              :class="{ active: newChallenge.difficulty === 'hard' }"
+              @click="newChallenge.difficulty = 'hard'"
+            >
+              Hard 😰
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Verification Method</label>
+          <select class="form-select" v-model="newChallenge.verification">
+            <option value="photo">Photo Evidence</option>
+            <option value="video">Video Evidence</option>
+            <option value="third-party">Third-party Verification</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Challenge Duration (days)</label>
+          <input type="number" class="form-input" v-model="newChallenge.duration" placeholder="7">
+        </div>
+        <div class="modal-actions">
+          <button class="button button-secondary" @click="showCreateChallenge = false">Cancel</button>
+          <button class="button button-primary" @click="createChallenge">Create Challenge</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Accept Challenge Modal -->
+    <div class="modal-bg" v-if="showAcceptChallenge">
+      <div class="modal">
+        <div class="modal-title">Accept Challenge: {{ selectedChallenge.title }}</div>
+        <p style="margin-bottom: 16px;">Are you ready to take on this challenge? Once accepted, you'll have {{ selectedChallenge.duration || 7 }} days to complete it.</p>
+        <div class="challenge-content">
+          <div class="challenge-title">{{ selectedChallenge.title }}</div>
+          <div class="challenge-description">{{ selectedChallenge.description }}</div>
+          <div class="challenge-reward">Reward: {{ selectedChallenge.reward }}</div>
+        </div>
+        <div class="modal-actions">
+          <button class="button button-secondary" @click="showAcceptChallenge = false">Cancel</button>
+          <button class="button button-accent" @click="confirmAcceptChallenge">Accept Challenge</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Share Challenge Modal -->
+    <div class="modal-bg" v-if="showShareChallenge">
+      <div class="modal">
+        <div class="modal-title">Share Challenge</div>
+        <p style="margin-bottom: 16px;">Share this challenge with your friends!</p>
+        <div class="form-group">
+          <label class="form-label">Share via</label>
+          <div style="display: flex; justify-content: space-around; margin-top: 16px;">
+            <div class="challenge-action" style="flex-direction: column; align-items: center;">
+              <span style="font-size: 24px;">💬</span>
+              <span>Message</span>
+            </div>
+            <div class="challenge-action" style="flex-direction: column; align-items: center;">
+              <span style="font-size: 24px;">📱</span>
+              <span>Social</span>
+            </div>
+            <div class="challenge-action" style="flex-direction: column; align-items: center;">
+              <span style="font-size: 24px;">📧</span>
+              <span>Email</span>
+            </div>
+            <div class="challenge-action" style="flex-direction: column; align-items: center;">
+              <span style="font-size: 24px;">📋</span>
+              <span>Copy Link</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="button button-secondary" @click="showShareChallenge = false">Close</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Submit Proof Modal -->
+    <div class="modal-bg" v-if="showSubmitProof">
+      <div class="modal">
+        <div class="modal-title">Submit Proof</div>
+        <p style="margin-bottom: 16px;">Upload evidence that you've completed the challenge</p>
+        <div class="form-group">
+          <label class="form-label">Proof Type</label>
+          <select class="form-select">
+            <option>Photo</option>
+            <option>Video</option>
+            <option>Link to External Evidence</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Upload File</label>
+          <input type="file" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Comment (optional)</label>
+          <textarea class="form-input" rows="2" placeholder="Add any comments about your submission"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="button button-secondary" @click="showSubmitProof = false">Cancel</button>
+          <button class="button button-accent" @click="confirmSubmitProof">Submit for Verification</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
